@@ -14,7 +14,6 @@ contract DeployRPS is Script {
         AddConsumer addConsumer = new AddConsumer();
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
 
-        // if (config.subscriptionId == 0) {
         // create subscription
         CreateSubscription createSubscription = new CreateSubscription();
         (config.subscriptionId, config.vrfCoordinator) = createSubscription.createSubscription(config.vrfCoordinator, config.account);
@@ -24,10 +23,9 @@ contract DeployRPS is Script {
         fundSubscriptions.fundSubsription(config.vrfCoordinator, config.subscriptionId, config.link, config.account);
 
         helperConfig.setConfig(block.chainid, config);
-        // }
 
         vm.startBroadcast(config.account);
-        RockPaperScissors raffle = new RockPaperScissors(
+        RockPaperScissors rps = new RockPaperScissors(
             config.vrfCoordinator,
             config.gasLane,
             config.subscriptionId,
@@ -35,7 +33,7 @@ contract DeployRPS is Script {
         );
         vm.stopBroadcast();
 
-        addConsumer.addConsumer(address(raffle), config.vrfCoordinator, config.subscriptionId, config.account);
-        return (raffle, helperConfig);
+        addConsumer.addConsumer(address(rps), config.vrfCoordinator, config.subscriptionId, config.account);
+        return (rps, helperConfig);
     }
 }
