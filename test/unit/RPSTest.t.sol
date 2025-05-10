@@ -4,16 +4,18 @@ pragma solidity 0.8.24;
 import {Test, console} from "forge-std/Test.sol";
 import {RockPaperScissors} from "src/RockPaperScissors.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
-import {DeployRPS} from "script/DeployRPS.s.sol";
+// import {DeployRPS} from "script/DeployRPS.s.sol";
+import {DeployRPS_Exposed} from "script/DeployRPS_Exposed.s.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {RPS_Exposed} from "test/mocks/RPS_Exposed.sol";
 import {Vm} from "forge-std/Vm.sol";
 // import {MockVRFCoordinatorV2Plus} from "test/mocks/MockVRFCoordinatorV2Plus.sol";
 // import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 
 contract RockPaperScissorsTest is Test {
-    RockPaperScissors public rps;
+    RPS_Exposed public rps;
     HelperConfig public helperConfig;
 
     address public vrfCoordinator;
@@ -35,7 +37,7 @@ contract RockPaperScissorsTest is Test {
     uint256 public BET_AMOUNT = 0.01 ether;
 
     function setUp() public {
-        DeployRPS deployer = new DeployRPS();
+        DeployRPS_Exposed deployer = new DeployRPS_Exposed();
         (rps, helperConfig) = deployer.run();
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
         vrfCoordinator = config.vrfCoordinator;
@@ -93,7 +95,7 @@ contract RockPaperScissorsTest is Test {
         emit RockPaperScissors.GameDetailsUpdated(block.timestamp, BET_AMOUNT, block.timestamp);
         
         rps.createGame{value: BET_AMOUNT}();
-        rps.requestRandomSalt(PLAYER1);
+        rps.exposed_requestRandomSalt(PLAYER1);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(rps.getPlayerToRequestId(PLAYER1), address(rps));
         vm.stopPrank();
 
@@ -109,7 +111,7 @@ contract RockPaperScissorsTest is Test {
     modifier gameCreated() {
         vm.startPrank(PLAYER1);
         rps.createGame{value: BET_AMOUNT}();
-        rps.requestRandomSalt(PLAYER1);
+        rps.exposed_requestRandomSalt(PLAYER1);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(rps.getPlayerToRequestId(PLAYER1), address(rps));
         vm.stopPrank();
         _;
@@ -153,7 +155,7 @@ contract RockPaperScissorsTest is Test {
         emit RockPaperScissors.GameDetailsUpdated(block.timestamp, BET_AMOUNT, block.timestamp);
         
         rps.joinGame{value: BET_AMOUNT}();
-        rps.requestRandomSalt(PLAYER2);
+        rps.exposed_requestRandomSalt(PLAYER2);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(rps.getPlayerToRequestId(PLAYER2), address(rps));
         vm.stopPrank();
 
@@ -171,12 +173,12 @@ contract RockPaperScissorsTest is Test {
     modifier joinedGame() {
         vm.prank(PLAYER1);
         rps.createGame{value: BET_AMOUNT}();
-        rps.requestRandomSalt(PLAYER1);
+        rps.exposed_requestRandomSalt(PLAYER1);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(rps.getPlayerToRequestId(PLAYER1), address(rps));
 
         vm.prank(PLAYER2);
         rps.joinGame{value: BET_AMOUNT}();
-        rps.requestRandomSalt(PLAYER2);
+        rps.exposed_requestRandomSalt(PLAYER2);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(rps.getPlayerToRequestId(PLAYER2), address(rps));
         _;
     }
@@ -307,9 +309,8 @@ contract RockPaperScissorsTest is Test {
     //////////////////////////////////////////////////////////////*/
     function testCannotMakeMoveBeforeSaltReceived() public gameCreated {
         // Try to make a move before salt is received
-        vm.startPrank(PLAYER1);
-        rps.createGame{value: BET_AMOUNT}();
-        rps.requestRandomSalt(PLAYER1);
+        vm.startPrank(PLAYER2);
+        rps.joinGame{value: BET_AMOUNT}();
         vm.expectRevert(RockPaperScissors.RockPaperScissors__SaltNotSetYet.selector);
         rps.makeMove(RockPaperScissors.Move.Rock);
         vm.stopPrank();
@@ -526,7 +527,7 @@ contract RockPaperScissorsTest is Test {
     //     vm.stopPrank();
     // }
 
-    function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep() public skipFork {
+    function testFulfillRandomWordsCanOnlyBeCalledByVrfCoordinator() public skipFork {
         vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
         // vm.mockCall could be used here...
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(0, address(rps));

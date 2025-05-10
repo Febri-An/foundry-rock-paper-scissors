@@ -204,8 +204,7 @@ contract RockPaperScissors is VRFConsumerBaseV2Plus, ReentrancyGuard {
             hashedMove: bytes32(0),
             hasRevealed: false
         });
-        uint256 requestId = requestRandomSalt(msg.sender);
-        requestIdToPlayer[requestId] = msg.sender;
+        requestRandomSalt(msg.sender);
         
         player1 = msg.sender;
         gameState = GameState.Open;
@@ -241,7 +240,6 @@ contract RockPaperScissors is VRFConsumerBaseV2Plus, ReentrancyGuard {
             hasRevealed: false
         });
         requestRandomSalt(msg.sender);
-        // requestIdToPlayer[requestId] = msg.sender;
         
         player2 = msg.sender;
         gameState = GameState.Ready;
@@ -421,12 +419,10 @@ contract RockPaperScissors is VRFConsumerBaseV2Plus, ReentrancyGuard {
         emit GameStateChanged(GameState.Finished);
     }
 
-    // function _calculateMove(Move move1, Move move2) internal returns ()
-
     /*//////////////////////////////////////////////////////////////
                                CHAINLINK
     //////////////////////////////////////////////////////////////*/
-    function requestRandomSalt(address player) public returns(uint256) { // 🔴🟠🟡 vulnerability issue: can anybody calls this func
+    function requestRandomSalt(address player) internal returns(uint256) {
         VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
             keyHash: i_gasLane,
             subId: i_subscriptionId,
